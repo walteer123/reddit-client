@@ -10,6 +10,8 @@ interface RedditService {
 
     @GET("top.json")
     suspend fun getTopEntries(
-        @Query("limit") limit: Int
+        @Query("limit") limit: Int,
+        @Query("after") next: String?,
+        @Query("before") before: String?,
     ): RedditResponse<RedditListingResponse<PostRemote>>
 }

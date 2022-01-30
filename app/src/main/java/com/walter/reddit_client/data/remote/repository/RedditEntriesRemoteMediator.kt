@@ -34,38 +34,37 @@ class RedditEntriesRemoteMediator : RemoteMediator<Int, PostEntity>(), KoinCompo
                     return loadKey
                 }
                 else -> {
-                    loadKey as Int
+                    loadKey as RemoteKey?
                 }
             }
 
-            val data = service.getTopEntries(
-                limit = state.config.pageSize
+            val responseData = service.getTopEntries(
+                limit = state.config.pageSize,
+                next = page?.nextKey,
+                before = page?.prevKey
             )
                 .responseData
-                .items
+
+            val posts = responseData.items
                 .map { it.data.transform() }
 
-            val endOfList = data.isEmpty()
+            val endOfList = posts.isEmpty()
 
             if (loadType == LoadType.REFRESH && shouldDeleteAllData()) {
                 keyDao.deleteAll()
                 repoDao.deleteAllPosts()
             }
 
-            val prev = if (page == 0) null else page - 1
-            val next = if (endOfList) null else page + 1
-
-
-            val remoteKeys = data.map { repo ->
+            val remoteKeys = posts.map { post ->
                 RemoteKey(
-                    postIdHash = repo.id.hashCode(),
-                    prevKey = prev,
-                    nextKey = next
+                    postIdHash = post.id.hashCode(),
+                    nextKey = responseData.after,
+                    prevKey = responseData.before
                 )
             }
 
             keyDao.insertAll(remoteKeys)
-            repoDao.insertAllPosts(data)
+            repoDao.insertAllPosts(posts)
 
             return MediatorResult.Success(endOfPaginationReached = endOfList)
         } catch (exception: Exception) {
@@ -73,7 +72,8 @@ class RedditEntriesRemoteMediator : RemoteMediator<Int, PostEntity>(), KoinCompo
         }
     }
 
-   private suspend fun shouldDeleteAllData() = repoDao.getTotalPosts() > 0 && keyDao.getTotalKeys() > 0
+    private suspend fun shouldDeleteAllData() =
+        repoDao.getTotalPosts() > 0 && keyDao.getTotalKeys() > 0
 
     private suspend fun getClosestKey(state: PagingState<Int, PostEntity>): RemoteKey? {
         return state?.anchorPosition?.let {
@@ -103,20 +103,16 @@ class RedditEntriesRemoteMediator : RemoteMediator<Int, PostEntity>(), KoinCompo
     private suspend fun getKeyPageData(
         loadType: LoadType,
         state: PagingState<Int, PostEntity>
-    ): Any {
+    ): Any? {
         return when (loadType) {
             LoadType.REFRESH -> {
-                val remoteKeys = getClosestKey(state)
-                remoteKeys?.nextKey?.minus(1) ?: 0
+                getClosestKey(state)
             }
             LoadType.APPEND -> {
-                val remoteKeys = getLastKey(state)
-                val nextKey = remoteKeys?.nextKey
-                return nextKey ?: MediatorResult.Success(endOfPaginationReached = false)
+                return getLastKey(state) ?: MediatorResult.Success(endOfPaginationReached = false)
             }
             LoadType.PREPEND -> {
-                val remoteKeys = getFirstRemoteKey(state)
-                val prevKey = remoteKeys?.prevKey ?: return MediatorResult.Success(
+                val prevKey = getFirstRemoteKey(state) ?: return MediatorResult.Success(
                     endOfPaginationReached = false
                 )
                 prevKey

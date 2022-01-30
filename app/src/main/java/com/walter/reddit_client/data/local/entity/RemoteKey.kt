@@ -6,6 +6,6 @@ import androidx.room.PrimaryKey
 @Entity
 data class RemoteKey(
     @PrimaryKey val postIdHash: Int,
-    val prevKey: Int?,
-    val nextKey: Int?
+    val prevKey: String?,
+    val nextKey: String?
 )
