@@ -8,7 +8,7 @@ class RedditApiServiceFactory(
 ) : ServiceFactory {
     private val retrofit = Retrofit.Builder()
         .addConverterFactory(GsonConverterFactory.create())
-        .baseUrl("https://api.github.com/")
+        .baseUrl("https://reddit.com/")
         .client(okHttpClientFactory.create())
         .build()
 
