@@ -1,7 +1,8 @@
-package com.walter.reddit_client
+package com.walter.reddit_client.presentation
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import com.walter.reddit_client.R
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
